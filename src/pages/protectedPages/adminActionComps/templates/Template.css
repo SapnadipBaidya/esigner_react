@@ -1,0 +1,66 @@
+/* Template.css */
+
+.tmpl-root {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(120deg, #f9fafb 70%, #e0e7ef 100%);
+}
+
+.tmpl-sidebar {
+  background: #f3f4f6;
+  border-right: 1.5px solid #e5e7eb;
+  min-width: 275px;
+  max-width: 350px;
+  width: 26vw;
+  box-shadow: 0 0 12px 0 rgba(30, 41, 59, 0.06);
+  display: flex;
+  flex-direction: column;
+  z-index: 4;
+}
+
+.tmpl-main {
+  flex: 1;
+  padding: 38px 30px 30px 30px;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  min-width: 0;
+}
+
+.tmpl-toolbar {
+  margin-bottom: 16px;
+}
+
+.tmpl-pdfarea {
+  position: relative;
+  min-height: 600px;
+  background: #f8fafc;
+  border-radius: 18px;
+  box-shadow: 0 2px 16px 0 rgba(30, 58, 138, 0.03);
+  padding: 26px 10px 26px 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .tmpl-root {
+    flex-direction: column;
+  }
+  .tmpl-sidebar {
+    max-width: 100vw;
+    min-width: 100vw;
+    width: 100vw;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: none;
+  }
+  .tmpl-main {
+    padding: 22px 5vw 20px 5vw;
+  }
+  .tmpl-pdfarea {
+    padding: 12px 0 12px 0;
+    min-height: 340px;
+  }
+}

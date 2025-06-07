@@ -1,0 +1,66 @@
+.tb-root {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  gap: 24px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.tb-field-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.tb-btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-weight: 500;
+  font-size: 15px;
+  padding: 6px 16px;
+  margin: 0 2px;
+  transition: background 0.16s;
+  cursor: pointer;
+  outline: none;
+}
+
+.tb-btn:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.tb-btn:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.tb-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tb-zoom-info {
+  margin: 0 8px;
+  font-size: 14px;
+  color: #334155;
+}
+
+.tb-pagination {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 24px;
+}
+
+.tb-page-info {
+  font-size: 14px;
+  color: #334155;
+  margin: 0 8px;
+}
+
+.tb-nav {
+  min-width: 60px;
+}
