@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
+import PdfFormEditor from "../utils/PdfFormEditor";
 
 function getTokenFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -46,10 +47,14 @@ const FillPage = () => {
     );
 
   return (
-    <div style={{ maxWidth: 500, margin: "3rem auto", textAlign: "center" }}>
+    <div>
       <h2>Contract Fill Page</h2>
       {decoded ? (
-        <pre>{JSON.stringify(decoded, null, 2)}</pre>
+       <> 
+       {/* <pre>{JSON.stringify(decoded, null, 2)}</pre> */}
+
+          <PdfFormEditor/>
+          </>
       ) : (
         <div>Loading token data...</div>
       )}

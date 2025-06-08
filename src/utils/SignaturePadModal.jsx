@@ -11,14 +11,17 @@ function SignaturePadModal({ onSave, onClose }) {
     ctx.strokeStyle = "#111";
   }, []);
 
-  const handlePointerDown = e => {
-    setDrawing(true);
-    const rect = canvasRef.current.getBoundingClientRect();
-    canvasRef.current.getContext("2d").moveTo(
-      e.clientX - rect.left,
-      e.clientY - rect.top
-    );
-  };
+const handlePointerDown = e => {
+  setDrawing(true);
+  const canvas = canvasRef.current;
+  const rect = canvas.getBoundingClientRect();
+  const ctx = canvas.getContext("2d");
+  ctx.beginPath(); // <-- Always start a new path on pointer down!
+  ctx.moveTo(
+    e.clientX - rect.left,
+    e.clientY - rect.top
+  );
+};
 
   const handlePointerUp = () => setDrawing(false);
 
@@ -38,11 +41,13 @@ function SignaturePadModal({ onSave, onClose }) {
     onSave(data);
   };
 
-  const handleClear = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  };
+
+const handleClear = () => {
+  const canvas = canvasRef.current;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath(); // <-- Reset the path
+};
 
   return (
     <div style={{

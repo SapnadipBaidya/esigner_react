@@ -663,12 +663,12 @@ export default function PdfFormEditor() {
             boxShadow: "0 2px 24px #2221",
             borderRadius: 8,
             background: "#fff",
-            overflow: "hidden",
+            overflow: "scroll",
             width: canvasDims.width,
             height: canvasDims.height,
           }}
         >
-          <canvas ref={pdfCanvasRef} style={{ display: "block" }} />
+          <canvas ref={pdfCanvasRef} style={{ display: "block",overflow:"visible" }} />
           {/* Field overlays */}
           <div
             style={{
