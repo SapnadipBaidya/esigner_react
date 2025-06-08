@@ -3,6 +3,8 @@ import { Rnd } from "react-rnd";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import SignaturePadModal from "./SignaturePadModal";
+
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
@@ -12,6 +14,7 @@ const FIELD_TYPES = [
   { value: "text", label: "Text" },
   { value: "number", label: "Number" },
   { value: "date", label: "Date" },
+  { value: "image", label: "Sign" },
 ];
 
 function getDefaultField(type, page) {
@@ -19,9 +22,14 @@ function getDefaultField(type, page) {
     id: "f_" + Math.random().toString(36).slice(2, 9),
     label: "New Field",
     type,
-    x: 50, y: 50, width: 120, height: 32,
+    x: 50,
+    y: 50,
+    width: 120,
+    height: 32,
     value: "",
-    page
+    page,
+    clientField: false,
+    imageData: "", // for image/signature field
   };
 }
 
@@ -33,6 +41,10 @@ export default function PdfFormEditor() {
   const [editField, setEditField] = useState(null);
   const pdfCanvasRef = useRef(null);
   const [canvasDims, setCanvasDims] = useState({ width: 600, height: 800 });
+
+  // Signature pad modal state
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [pendingImageFieldId, setPendingImageFieldId] = useState(null);
 
   // Load PDF
   const handleFileChange = async (e) => {
@@ -62,23 +74,24 @@ export default function PdfFormEditor() {
 
   useEffect(() => {
     if (pdfDoc) renderPage(pdfDoc, currentPage);
+    // eslint-disable-next-line
   }, [pdfDoc, currentPage]);
 
   // Field select logic
   const handleSelectField = (id) => {
     setActiveFieldId(id);
-    const f = fields.find(f => f.id === id);
+    const f = fields.find((f) => f.id === id);
     setEditField({ ...f });
   };
 
   // Field change (sidebar edits)
   const handleEditField = (key, value) => {
-    setEditField(f => ({ ...f, [key]: value }));
+    setEditField((f) => ({ ...f, [key]: value }));
   };
 
   // Save changes from sidebar
   const saveEditField = () => {
-    setFields(fields => fields.map(f => f.id === editField.id ? { ...editField } : f));
+    setFields((fields) => fields.map((f) => (f.id === editField.id ? { ...editField } : f)));
   };
 
   // Add new field
@@ -91,7 +104,7 @@ export default function PdfFormEditor() {
 
   // Delete field
   const handleDeleteField = (id) => {
-    setFields(fields => fields.filter(f => f.id !== id));
+    setFields((fields) => fields.filter((f) => f.id !== id));
     if (activeFieldId === id) {
       setActiveFieldId(null);
       setEditField(null);
@@ -100,63 +113,97 @@ export default function PdfFormEditor() {
 
   // Drag/resize overlays update fields
   const updateField = (id, updates) => {
-    setFields(fields => fields.map(f => f.id === id ? { ...f, ...updates } : f));
-    if (activeFieldId === id) setEditField(f => ({ ...f, ...updates }));
+    setFields((fields) => fields.map((f) => (f.id === id ? { ...f, ...updates } : f)));
+    if (activeFieldId === id) setEditField((f) => ({ ...f, ...updates }));
   };
 
-  // Download
-const downloadPdf = async () => {
-  if (!pdfDoc) return;
-  const pdfBytes = await pdfDoc.getData();
-  const pdfLibDoc = await PDFDocument.load(pdfBytes);
-  const font = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
+  // Download logic
+  const downloadPdf = async () => {
+    if (!pdfDoc) return;
+    const pdfBytes = await pdfDoc.getData();
+    const pdfLibDoc = await PDFDocument.load(pdfBytes);
+    const font = await pdfLibDoc.embedFont(StandardFonts.Helvetica);
 
-  for (const field of fields) {
-    const page = pdfLibDoc.getPage(field.page - 1);
-    // PDF page size (true PDF units)
-    const pdfWidth = page.getWidth();
-    const pdfHeight = page.getHeight();
-    console.log("pdf height , width",pdfHeight,pdfWidth)
-    // Canvas size (screen, pixels)
-    const canvasWidth = canvasDims.width;
-    const canvasHeight = canvasDims.height;
-    console.log("canvas height , width",canvasHeight,canvasWidth)
-    // Scale factors
-    const scaleX = pdfWidth / canvasWidth;
-    const scaleY = pdfHeight / canvasHeight;
-     console.log("scaleX",scaleX)
-      console.log("scaleY",scaleY)
-      console.log("field.x, field.y, field.width, field.height:", field.x, field.y, field.width, field.height);
-    // Scale + adjust Y
-    const pdfX = field.x * scaleX;
-    // Y must be scaled, then flipped (canvas 0=top, pdf 0=bottom)
-    const pdfY = pdfHeight - ((field.y + field.height) * scaleY);
-    console.log("pdfX, pdfY:", pdfX, pdfY);
-    // Font size: base size * Y-scale (optional, or tweak for your font)
-const pdfWidthField = field.width * scaleX;
-const pdfHeightField = field.height * scaleY;
-const fontSize = 14;
-const verticalAdjust = (pdfHeightField - fontSize) / 2;
-const textWidth = font.widthOfTextAtSize(field.value?.toString() || "", fontSize);
-// For left-aligned (input-style):
-page.drawText(field.value?.toString() || "", {
-  x: pdfX + (pdfWidthField - textWidth) / 2,
-  y: pdfY + verticalAdjust,
-  size: fontSize,
-  font,
-  color: rgb(0, 0, 0),
-  maxWidth: pdfWidthField,
-});
+    for (const field of fields) {
+      const page = pdfLibDoc.getPage(field.page - 1);
+      // PDF page size (true PDF units)
+      const pdfWidth = page.getWidth();
+      const pdfHeight = page.getHeight();
+      // Canvas size (screen, pixels)
+      const canvasWidth = canvasDims.width;
+      const canvasHeight = canvasDims.height;
+      // Scale factors
+      const scaleX = pdfWidth / canvasWidth;
+      const scaleY = pdfHeight / canvasHeight;
+      // Scale + adjust Y
+      const pdfX = field.x * scaleX;
+      // Y must be scaled, then flipped (canvas 0=top, pdf 0=bottom)
+      const pdfY = pdfHeight - (field.y + field.height) * scaleY;
+      const pdfWidthField = field.width * scaleX;
+      const pdfHeightField = field.height * scaleY;
 
-  }
+      if (field.type === "image" && field.imageData) {
+        // imageData is a base64 image (PNG/JPEG)
+        let imgEmbed;
+        if (field.imageData.startsWith("data:image/png")) {
+          imgEmbed = await pdfLibDoc.embedPng(field.imageData);
+        } else {
+          imgEmbed = await pdfLibDoc.embedJpg(field.imageData);
+        }
+        page.drawImage(imgEmbed, {
+          x: pdfX,
+          y: pdfY,
+          width: pdfWidthField,
+          height: pdfHeightField,
+        });
+      } else {
+        // text/number/date field
+        const fontSize = 14;
+        const text = field.value?.toString() || "";
+        const textWidth = font.widthOfTextAtSize(text, fontSize);
+        const verticalAdjust = (pdfHeightField - fontSize) / 2;
+        page.drawText(text, {
+          x: pdfX + (pdfWidthField - textWidth) / 2,
+          y: pdfY + verticalAdjust,
+          size: fontSize,
+          font,
+          color: rgb(0, 0, 0),
+          maxWidth: pdfWidthField,
+        });
+      }
+    }
+    const pdfDataUri = await pdfLibDoc.saveAsBase64({ dataUri: true });
+    const a = document.createElement("a");
+    a.href = pdfDataUri;
+    a.download = "filled.pdf";
+    a.click();
+  };
 
-  const pdfDataUri = await pdfLibDoc.saveAsBase64({ dataUri: true });
-  const a = document.createElement("a");
-  a.href = pdfDataUri;
-  a.download = "filled.pdf";
-  a.click();
-};
+  // Image/upload logic in sidebar
+  const handleSidebarImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => handleEditField("imageData", evt.target.result);
+    reader.readAsDataURL(file);
+  };
 
+  // Handle saving signature from modal
+  const handleSaveSignature = (imgData) => {
+    if (!pendingImageFieldId) return;
+    // Update editField if this is the current editing one
+    if (editField && editField.id === pendingImageFieldId) {
+      setEditField((f) => ({ ...f, imageData: imgData }));
+    }
+    // Also update fields array
+    setFields((fields) =>
+      fields.map((f) =>
+        f.id === pendingImageFieldId ? { ...f, imageData: imgData } : f
+      )
+    );
+    setShowSignModal(false);
+    setPendingImageFieldId(null);
+  };
 
   // Field overlay (draggable with handle, resizable with mouse)
   const renderField = (field) => {
@@ -205,7 +252,7 @@ page.drawText(field.value?.toString() || "", {
             borderTopLeftRadius: 4,
             borderBottomLeftRadius: 4,
             marginRight: 4,
-            userSelect: "none"
+            userSelect: "none",
           }}
           title="Drag"
         >
@@ -242,6 +289,23 @@ page.drawText(field.value?.toString() || "", {
               value={field.value}
               onChange={(e) => updateField(field.id, { value: e.target.value })}
             />
+          ) : field.type === "image" ? (
+            field.imageData ? (
+              <img
+                src={field.imageData}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  pointerEvents: "none",
+                }}
+                alt="Sign"
+              />
+            ) : (
+              <span style={{ color: "#aaa", fontSize: 13, width: "100%", textAlign: "center" }}>
+                No image
+              </span>
+            )
           ) : null}
         </div>
       </Rnd>
@@ -252,85 +316,156 @@ page.drawText(field.value?.toString() || "", {
   return (
     <div style={{ display: "flex", height: "100vh", background: "#f4f7fa" }}>
       {/* Sidebar */}
-      <div style={{
-        width: SIDEBAR_WIDTH,
-        minWidth: SIDEBAR_WIDTH,
-        background: "#fff",
-        boxShadow: "2px 0 6px #0001",
-        padding: 16,
-        overflowY: "auto",
-        borderRight: "1px solid #e3e3e3",
-      }}>
+      <div
+        style={{
+          width: SIDEBAR_WIDTH,
+          minWidth: SIDEBAR_WIDTH,
+          background: "#fff",
+          boxShadow: "2px 0 6px #0001",
+          padding: 16,
+          overflowY: "auto",
+          borderRight: "1px solid #e3e3e3",
+        }}
+      >
         <h3 style={{ fontSize: 18, marginBottom: 12 }}>Fields</h3>
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-          {FIELD_TYPES.map(ft => (
+          {FIELD_TYPES.map((ft) => (
             <button
               key={ft.value}
-              style={{ padding: "3px 10px", fontSize: 12, borderRadius: 4, border: "1px solid #ccc", background: "#f5faff", cursor: "pointer" }}
+              style={{
+                padding: "3px 10px",
+                fontSize: 12,
+                borderRadius: 4,
+                border: "1px solid #ccc",
+                background: "#f5faff",
+                cursor: "pointer",
+              }}
               onClick={() => handleAddField(ft.value)}
-            >+ {ft.label}</button>
+            >
+              + {ft.label}
+            </button>
           ))}
         </div>
-        {fields.filter(f => f.page === currentPage).map(field => (
-          <div
-            key={field.id}
-            style={{
-              padding: "8px 10px",
-              marginBottom: 8,
-              background: field.id === activeFieldId ? "#e6f2ff" : "#f9f9f9",
-              borderRadius: 6,
-              border: field.id === activeFieldId ? "1.5px solid #1890ff" : "1px solid #e3e3e3",
-              cursor: "pointer",
-              transition: "all .15s",
-              fontWeight: field.id === activeFieldId ? "600" : "normal",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center"
-            }}
-            onClick={() => handleSelectField(field.id)}
-          >
-            <div>
-              <div style={{ fontSize: 13, color: "#333" }}>{field.label}</div>
-              <div style={{ fontSize: 11, color: "#888" }}>{field.type}</div>
-              <div style={{ fontSize: 12, color: "#444" }}>{field.value || <span style={{color:"#ccc"}}>empty</span>}</div>
+        {fields
+          .filter((f) => f.page === currentPage)
+          .map((field) => (
+            <div
+              key={field.id}
+              style={{
+                padding: "8px 10px",
+                marginBottom: 8,
+                background: field.id === activeFieldId ? "#e6f2ff" : "#f9f9f9",
+                borderRadius: 6,
+                border: field.id === activeFieldId ? "1.5px solid #1890ff" : "1px solid #e3e3e3",
+                cursor: "pointer",
+                transition: "all .15s",
+                fontWeight: field.id === activeFieldId ? "600" : "normal",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+              onClick={() => handleSelectField(field.id)}
+            >
+              <div>
+                <div style={{ fontSize: 13, color: "#333" }}>{field.label}</div>
+                <div style={{ fontSize: 11, color: "#888" }}>{field.type}</div>
+                <div style={{ fontSize: 12, color: "#444" }}>
+                  {field.type === "image"
+                    ? field.imageData
+                      ? "Image"
+                      : <span style={{ color: "#ccc" }}>no image</span>
+                    : field.value || <span style={{ color: "#ccc" }}>empty</span>}
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteField(field.id);
+                }}
+                style={{
+                  marginLeft: 10,
+                  background: "transparent",
+                  color: "#e00",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: "bold",
+                }}
+              >
+                ✕
+              </button>
             </div>
-            <button
-              onClick={e => { e.stopPropagation(); handleDeleteField(field.id); }}
-              style={{ marginLeft: 10, background: "transparent", color: "#e00", border: "none", cursor: "pointer", fontWeight: "bold" }}
-            >✕</button>
-          </div>
-        ))}
+          ))}
         {/* Edit panel for active field */}
         {editField && (
-          <div style={{ marginTop: 20, padding: "10px 8px", background: "#f8faff", borderRadius: 5, border: "1px solid #ddeeff" }}>
+          <div
+            style={{
+              marginTop: 20,
+              padding: "10px 8px",
+              background: "#f8faff",
+              borderRadius: 5,
+              border: "1px solid #ddeeff",
+            }}
+          >
             <h4 style={{ fontSize: 15, marginBottom: 10 }}>Edit Field</h4>
             <div style={{ marginBottom: 8 }}>
               <label>ID</label>
               <input
                 value={editField.id}
-                onChange={e => handleEditField("id", e.target.value)}
-                style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                onChange={(e) => handleEditField("id", e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 4,
+                  fontSize: 13,
+                  borderRadius: 3,
+                  border: "1px solid #ccc",
+                  marginTop: 2,
+                }}
               />
             </div>
             <div style={{ marginBottom: 8 }}>
               <label>Label</label>
               <input
                 value={editField.label}
-                onChange={e => handleEditField("label", e.target.value)}
-                style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                onChange={(e) => handleEditField("label", e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 4,
+                  fontSize: 13,
+                  borderRadius: 3,
+                  border: "1px solid #ccc",
+                  marginTop: 2,
+                }}
               />
             </div>
             <div style={{ marginBottom: 8 }}>
               <label>Type</label>
               <select
                 value={editField.type}
-                onChange={e => handleEditField("type", e.target.value)}
-                style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                onChange={(e) => handleEditField("type", e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 4,
+                  fontSize: 13,
+                  borderRadius: 3,
+                  border: "1px solid #ccc",
+                  marginTop: 2,
+                }}
               >
-                {FIELD_TYPES.map(ft => (
-                  <option key={ft.value} value={ft.value}>{ft.label}</option>
+                {FIELD_TYPES.map((ft) => (
+                  <option key={ft.value} value={ft.value}>
+                    {ft.label}
+                  </option>
                 ))}
               </select>
+            </div>
+            <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!editField.clientField}
+                onChange={(e) => handleEditField("clientField", e.target.checked)}
+                id="clientField"
+              />
+              <label htmlFor="clientField">Client Field</label>
             </div>
             <div style={{ marginBottom: 8 }}>
               <label>Value</label>
@@ -338,94 +473,227 @@ page.drawText(field.value?.toString() || "", {
                 <input
                   type="date"
                   value={editField.value}
-                  onChange={e => handleEditField("value", e.target.value)}
-                  style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                  onChange={(e) => handleEditField("value", e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: 4,
+                    fontSize: 13,
+                    borderRadius: 3,
+                    border: "1px solid #ccc",
+                    marginTop: 2,
+                  }}
                 />
+              ) : editField.type === "image" ? (
+                <div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                    <button
+                      onClick={() => {
+                        setPendingImageFieldId(editField.id);
+                        setShowSignModal(true);
+                      }}
+                      style={{
+                        padding: "2px 12px",
+                        borderRadius: 3,
+                        border: "1px solid #aaa",
+                        background: "#f0f5ff",
+                        cursor: "pointer",
+                      }}
+                      type="button"
+                    >
+                      Draw Signature
+                    </button>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg"
+                      onChange={handleSidebarImageUpload}
+                      style={{ border: "none", fontSize: 13 }}
+                    />
+                  </div>
+                  {editField.imageData && (
+                    <img
+                      src={editField.imageData}
+                      alt="Signature"
+                      style={{ width: 100, border: "1px solid #ddd", borderRadius: 3, marginTop: 5 }}
+                    />
+                  )}
+                </div>
               ) : (
                 <input
                   value={editField.value}
-                  onChange={e => handleEditField("value", e.target.value)}
-                  style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                  onChange={(e) => handleEditField("value", e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: 4,
+                    fontSize: 13,
+                    borderRadius: 3,
+                    border: "1px solid #ccc",
+                    marginTop: 2,
+                  }}
                 />
               )}
             </div>
             <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
               <div style={{ flex: 1 }}>
                 <label>X</label>
-                <input type="number"
+                <input
+                  type="number"
                   value={editField.x}
-                  onChange={e => handleEditField("x", Number(e.target.value))}
-                  style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                  onChange={(e) => handleEditField("x", Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: 4,
+                    fontSize: 13,
+                    borderRadius: 3,
+                    border: "1px solid #ccc",
+                    marginTop: 2,
+                  }}
                 />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Y</label>
-                <input type="number"
+                <input
+                  type="number"
                   value={editField.y}
-                  onChange={e => handleEditField("y", Number(e.target.value))}
-                  style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                  onChange={(e) => handleEditField("y", Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: 4,
+                    fontSize: 13,
+                    borderRadius: 3,
+                    border: "1px solid #ccc",
+                    marginTop: 2,
+                  }}
                 />
               </div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <div style={{ flex: 1 }}>
                 <label>Width</label>
-                <input type="number"
+                <input
+                  type="number"
                   value={editField.width}
-                  onChange={e => handleEditField("width", Number(e.target.value))}
-                  style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                  onChange={(e) => handleEditField("width", Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: 4,
+                    fontSize: 13,
+                    borderRadius: 3,
+                    border: "1px solid #ccc",
+                    marginTop: 2,
+                  }}
                 />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Height</label>
-                <input type="number"
+                <input
+                  type="number"
                   value={editField.height}
-                  onChange={e => handleEditField("height", Number(e.target.value))}
-                  style={{ width: "100%", padding: 4, fontSize: 13, borderRadius: 3, border: "1px solid #ccc", marginTop: 2 }}
+                  onChange={(e) => handleEditField("height", Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: 4,
+                    fontSize: 13,
+                    borderRadius: 3,
+                    border: "1px solid #ccc",
+                    marginTop: 2,
+                  }}
                 />
               </div>
             </div>
             <button
-              style={{ background: "#1890ff", color: "#fff", border: "none", padding: "6px 16px", borderRadius: 4, marginTop: 10, width: "100%" }}
+              style={{
+                background: "#1890ff",
+                color: "#fff",
+                border: "none",
+                padding: "6px 16px",
+                borderRadius: 4,
+                marginTop: 10,
+                width: "100%",
+              }}
               onClick={saveEditField}
-            >Save</button>
+              type="button"
+            >
+              Save
+            </button>
           </div>
         )}
       </div>
 
       {/* Main Area */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: 16 }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: 16,
+        }}
+      >
         <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
           <input type="file" accept="application/pdf" onChange={handleFileChange} />
           <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Prev</button>
-          <span>Page {currentPage}/{pdfDoc?.numPages || 1}</span>
-          <button onClick={() => setCurrentPage((p) => Math.min(pdfDoc?.numPages || 1, p + 1))}>Next</button>
-          <button onClick={downloadPdf} style={{ marginLeft: 12, background: "#1890ff", color: "#fff", border: "none", padding: "6px 18px", borderRadius: 4 }}>Download</button>
+          <span>
+            Page {currentPage}/{pdfDoc?.numPages || 1}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((p) => Math.min(pdfDoc?.numPages || 1, p + 1))
+            }
+          >
+            Next
+          </button>
+          <button
+            onClick={downloadPdf}
+            style={{
+              marginLeft: 12,
+              background: "#1890ff",
+              color: "#fff",
+              border: "none",
+              padding: "6px 18px",
+              borderRadius: 4,
+            }}
+          >
+            Download
+          </button>
         </div>
         {/* PDF Canvas + Overlay */}
-        <div style={{
-          position: "relative",
-          boxShadow: "0 2px 24px #2221",
-          borderRadius: 8,
-          background: "#fff",
-          overflow: "hidden",
-          width: canvasDims.width,
-          height: canvasDims.height,
-        }}>
-          <canvas ref={pdfCanvasRef} style={{ display: "block" }} />
-          {/* Field overlays */}
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
+        <div
+          style={{
+            position: "relative",
+            boxShadow: "0 2px 24px #2221",
+            borderRadius: 8,
+            background: "#fff",
+            overflow: "hidden",
             width: canvasDims.width,
             height: canvasDims.height,
-            pointerEvents: "none"
-          }}>
-            {fields.filter(f => f.page === currentPage).map(renderField)}
+          }}
+        >
+          <canvas ref={pdfCanvasRef} style={{ display: "block" }} />
+          {/* Field overlays */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: canvasDims.width,
+              height: canvasDims.height,
+              pointerEvents: "none",
+            }}
+          >
+            {fields.filter((f) => f.page === currentPage).map(renderField)}
           </div>
         </div>
       </div>
+      {/* SignaturePadModal (when needed) */}
+      {showSignModal && pendingImageFieldId && (
+        <SignaturePadModal
+          onSave={handleSaveSignature}
+          onClose={() => {
+            setShowSignModal(false);
+            setPendingImageFieldId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
