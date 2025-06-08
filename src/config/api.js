@@ -21,6 +21,20 @@ export const getTemplateData = (templateId) =>
 
 export const downloadTemplatePDF = (templateId) =>
   API.post(`template/get-template-pdf?id=${templateId}`,{},{ responseType: "arraybuffer"});
+
+export const createOrUpdateFieldForTemplate = async(templateId,fields) =>{
+  API.post(`fields/create_update_fields_per_template_id`,{templateId,fields},{
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });}
+
+export const getFieldsByTemplateId = async (templateId) => {
+  return API.get(`/fields/get_fields_by_template_id?templateId=${templateId}`);
+  // ^ matches the backend route!
+};
+
+
 // export const submitContract = (payload) =>
 //   API.post('/submit-contract', payload);
 
