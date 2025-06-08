@@ -60,12 +60,13 @@ useEffect(() => {
         // Find matching fieldData by id
         const found = contractFieldsData.fieldData.find(i => i.fieldId === field.id);
         // If found, replace value; else keep as is
-        return found ? { ...field, value: found.value } : field;
+        return found ? { ...field, value: found?.value,imageData:found?.imageData,imageId:found?.imageId } :  { ...field, value: "", imageData: "", imageId: "" };
       })
     );
   }
 
   console.log("selectedContractData", fields, contractFieldsData?.fieldData);
+
 }, [selectedContractData]);
 
   
@@ -112,7 +113,7 @@ useEffect(() => {
       />
       {/* You are selecting a contract from a dropdown or creating a contract and selecting it */}
 
-      {selectedId && selectedContractId && <PdfFormEditorForContact pdfDoc={pdfDoc} setPdfDoc={setPdfDoc} fields={fields} setFields={setFields}/>}
+      {selectedId && selectedContractId && <PdfFormEditorForContact pdfDoc={pdfDoc} setPdfDoc={setPdfDoc} fields={fields} setFields={setFields} contractId={selectedContractId} templateId={selectedId}/>}
     </>
   );
 }

@@ -4,7 +4,7 @@ import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import SignaturePadModal from "./SignaturePadModal";
-import { createOrUpdateFieldForTemplate, downloadTemplatePDF, getFieldsByTemplateId } from "../config/api";
+import { createOrUpdateFieldForContractPerTemplate, createOrUpdateFieldForTemplate, downloadTemplatePDF, getFieldsByTemplateId } from "../config/api";
 import ChooseTemplateDropdown from "../components/pdfDropdown/PdfDropDown";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -35,7 +35,7 @@ function getDefaultField(type, page) {
   };
 }
 
-export default function PdfFormEditorForContact({pdfDoc, setPdfDoc,fields, setFields}) {
+export default function PdfFormEditorForContact({pdfDoc,contractId,templateId,fields, setFields}) {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFieldId, setActiveFieldId] = useState(null);
@@ -46,7 +46,6 @@ export default function PdfFormEditorForContact({pdfDoc, setPdfDoc,fields, setFi
   // Signature pad modal state
   const [showSignModal, setShowSignModal] = useState(false);
   const [pendingImageFieldId, setPendingImageFieldId] = useState(null);
-  const [selectedId, setSelectedId] = useState("");
 
 
   // Render PDF to canvas and set dimensions
@@ -205,16 +204,24 @@ export default function PdfFormEditorForContact({pdfDoc, setPdfDoc,fields, setFi
     };
     reader.readAsDataURL(file);
   };
-
+  console.log("fields",fields,templateId)
   const handleSaveFields=async()=>{
-    console.log("fields",fields,selectedId)
-  await   createOrUpdateFieldForTemplate(selectedId,fields)
+    console.log("fields",fields,templateId)
+    const fieldData = fields.map((item)=>{
+
+        return{
+        fieldId:item?.id,
+        value:item?.value,
+        imageData:item?.imageData,
+        imageId:item?.imageId
+    }})
+  await   createOrUpdateFieldForContractPerTemplate(templateId,contractId,fieldData)
   }
 
   // Save signature: update all fields with same imageId
   const handleSaveSignature = (imgData) => {
-    const field = getFieldById(pendingImageFieldId);
-    if (!field?.imageId) return;
+try{    const field = getFieldById(pendingImageFieldId);
+    if (!field?.imageId) return;  // sometimes i dont get imageId, and also i am not alble to set new image
     setFields((fields) =>
       fields.map((f) =>
         f.type === "image" && f.imageId === field.imageId
@@ -227,30 +234,11 @@ export default function PdfFormEditorForContact({pdfDoc, setPdfDoc,fields, setFi
 
     setShowSignModal(false);
     setPendingImageFieldId(null);
-  };
-  // Load PDF
-    async function handleSelectTemplate(e, templates) {
-      const tid = e.target.value;
-      setSelectedId(tid);
-      const t = templates.find(t => t.templateId === tid);
-      if (t) {
-        // setTemplateName(t.templateName);
-        // setTemplateId(t.templateId);
-  
-        try {
-          const resp = await downloadTemplatePDF(t.templateId);
-          if (resp.status !== 200 && resp.status !== 201) throw new Error("PDF fetch failed");
-          const buf = resp.data; // axios returns .data (already arraybuffer)
-          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-          setPdfDoc(pdf);
-        //   setTotalPages(pdf.numPages);
-        } catch (err) {
-          console.log(err)
-          alert("Failed to load PDF for this template.");
-        }
-      }
-    }
-  
+  }catch(err){
+    console.error(err)
+  }
+}
+
 
 
   // Change imageId for image fields in the sidebar (sync all matching ones)
@@ -618,6 +606,7 @@ export default function PdfFormEditorForContact({pdfDoc, setPdfDoc,fields, setFi
                   <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
                     <button
                       onClick={() => {
+                        debugger
                         setPendingImageFieldId(editField.id);
                         setShowSignModal(true);
                       }}

@@ -57,6 +57,14 @@ export const getContractsByTempId = async ({templateId}) => {
   // ^ matches the backend route!
 };
 
+export const createOrUpdateFieldForContractPerTemplate = async (templateId,contractId, fieldData ) => {
+  return API.post(
+    'contract/find_and_edit_contract',
+    { templateId, contractId, fieldData },
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+};
+
 
 // export const submitContract = (payload) =>
 //   API.post('/submit-contract', payload);
