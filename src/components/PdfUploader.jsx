@@ -44,7 +44,7 @@ export default function PdfUploader({
   return (
     <div className="pdfu-root">
       <label className="pdfu-upload-label">
-        <span className="pdfu-upload-btn">Upload PDF</span>
+        <span className="pdfu-upload-btn">Attach PDF</span>
         <input
           type="file"
           accept="application/pdf"
