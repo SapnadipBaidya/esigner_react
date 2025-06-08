@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import ChooseTemplateDropdown from "../../../../components/pdfDropdown/PdfDropDown";
 import PdfFormEditorForContact from "../../../../utils/PdfFormEditorForContact";
@@ -6,6 +6,7 @@ import {
   createContract,
   downloadTemplatePDF,
   getContractsByTempId,
+  getFieldsByTemplateId,
 } from "../../../../config/api";
 import ContractSelectDropDown from "../../../../components/pdfDropdown/ContractSelectDropDown";
 import CreateContractPopup from "../../../../components/pdfDropdown/CreateContractPopup";
@@ -13,8 +14,23 @@ import CreateContractPopup from "../../../../components/pdfDropdown/CreateContra
 function ContractorEditor() {
   const [selectedId, setSelectedId] = useState(""); // templateId
   const [selectedContractId, setSelectedContractId] = useState(""); // contractId
+  const [selectedContractData, setSelectedContractData] = useState(""); // contractId
   const [pdfDoc, setPdfDoc] = useState();
   const [popupOpen, setPopupOpen] = useState(false);
+  const [fields, setFields] = useState(false);
+
+  useEffect(() => {
+    const fetchFields = async () => {
+      if (selectedId) {
+        const resp = await getFieldsByTemplateId(selectedId);
+        setFields(resp?.data?.fields)
+        console.log("resp fields", resp?.data?.fields);
+      }
+    };
+    
+    fetchFields();
+  }, [selectedId]);
+  
   async function handleSelectTemplate(e, templates) {
     const tid = e.target.value;
     setSelectedId(tid);
@@ -33,6 +49,26 @@ function ContractorEditor() {
       }
     }
   }
+  
+
+useEffect(() => {
+  const contractFieldsData = selectedContractData?.[0];
+
+  if (contractFieldsData?.fieldData && Array.isArray(contractFieldsData.fieldData)) {
+    setFields(prevFields =>
+      prevFields.map(field => {
+        // Find matching fieldData by id
+        const found = contractFieldsData.fieldData.find(i => i.fieldId === field.id);
+        // If found, replace value; else keep as is
+        return found ? { ...field, value: found.value } : field;
+      })
+    );
+  }
+
+  console.log("selectedContractData", fields, contractFieldsData?.fieldData);
+}, [selectedContractData]);
+
+  
 
   return (
     <>
@@ -52,7 +88,9 @@ function ContractorEditor() {
           templateId={selectedId}
           selectedContractId={selectedContractId}
           onContractSelect={(e, contracts) => {
+            console.log("contracts",contracts,e.target.value)
             setSelectedContractId(e.target.value);
+            setSelectedContractData(contracts?.filter((i)=>i?._id==e.target.value))
             // You can access selected contract details from contracts array if needed
           }}
         />
@@ -74,7 +112,7 @@ function ContractorEditor() {
       />
       {/* You are selecting a contract from a dropdown or creating a contract and selecting it */}
 
-      {selectedId && selectedContractId && <PdfFormEditorForContact />}
+      {selectedId && selectedContractId && <PdfFormEditorForContact pdfDoc={pdfDoc} setPdfDoc={setPdfDoc} fields={fields} setFields={setFields}/>}
     </>
   );
 }

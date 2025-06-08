@@ -35,9 +35,8 @@ function getDefaultField(type, page) {
   };
 }
 
-export default function PdfFormEditorForContact() {
-  const [pdfDoc, setPdfDoc] = useState(null);
-  const [fields, setFields] = useState([]);
+export default function PdfFormEditorForContact({pdfDoc, setPdfDoc,fields, setFields}) {
+
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFieldId, setActiveFieldId] = useState(null);
   const [editField, setEditField] = useState(null);
@@ -63,21 +62,6 @@ export default function PdfFormEditorForContact() {
   };
 
 
-const getFieldsByTemplateIdOnSelection = async (templateId) => {
-  return await getFieldsByTemplateId(templateId);
-}
-
-useEffect(() => {
-  const fetchFields = async () => {
-    if (selectedId) {
-      const resp = await getFieldsByTemplateIdOnSelection(selectedId);
-      setFields(resp?.data?.fields)
-      console.log("resp fields", resp?.data?.fields);
-    }
-  };
-  
-  fetchFields();
-}, [selectedId]);
 
   useEffect(() => {
     if (pdfDoc) renderPage(pdfDoc, currentPage);
@@ -296,8 +280,8 @@ useEffect(() => {
 
     return (
       <Rnd
-        // disableDragging={true}
-        // enableResizing={false}
+        disableDragging={true}
+        enableResizing={false}
 
         key={field.id}
         size={{ width: field.width, height: field.height }}
@@ -785,10 +769,7 @@ useEffect(() => {
         }}
       >
         <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-      <ChooseTemplateDropdown
-        selectedId={selectedId}
-        onTemplateSelect={handleSelectTemplate}
-      />
+
           <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>
             Prev
           </button>
