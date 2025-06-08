@@ -6,7 +6,7 @@ import Template from "./adminActionComps/templates/Template";
 const SIDEBAR_TABS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "templates", label: "Templates" },
-  { key: "contracts", label: "Contracts" },
+  { key: "edit_template", label: "Edit Template" },
   { key: "users", label: "Users" },
   { key: "audit", label: "Audit Logs" },
   { key: "settings", label: "Settings" }
@@ -27,7 +27,7 @@ function AdminPanel() {
         );
       case "templates":
         return <Template/>;
-      case "contracts":
+      case "edit_template":
         return <Contract/>;
       case "users":
         return <h2>User Management</h2>;
