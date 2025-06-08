@@ -1,8 +1,9 @@
 import React from 'react'
+import PdfFormEditor from '../../../../utils/PdfFormEditor'
 
 function Contract() {
   return (
-    <div>Contract</div>
+   <PdfFormEditor/>
   )
 }
 
