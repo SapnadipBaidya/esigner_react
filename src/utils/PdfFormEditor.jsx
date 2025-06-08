@@ -4,6 +4,8 @@ import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import SignaturePadModal from "./SignaturePadModal";
+import { downloadTemplatePDF } from "../config/api";
+import ChooseTemplateDropdown from "../components/pdfDropdown/PdfDropDown";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
@@ -45,20 +47,8 @@ export default function PdfFormEditor() {
   // Signature pad modal state
   const [showSignModal, setShowSignModal] = useState(false);
   const [pendingImageFieldId, setPendingImageFieldId] = useState(null);
+  const [selectedId, setSelectedId] = useState("");
 
-  // Load PDF
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const data = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data }).promise;
-    setPdfDoc(pdf);
-    setCurrentPage(1);
-    renderPage(pdf, 1);
-    setFields([]);
-    setActiveFieldId(null);
-    setEditField(null);
-  };
 
   // Render PDF to canvas and set dimensions
   const renderPage = async (pdf, pageNum) => {
@@ -99,9 +89,7 @@ export default function PdfFormEditor() {
     if (activeFieldId && editField.id !== activeFieldId) {
       // Update the ID everywhere in the fields list
       setFields((fields) =>
-        fields.map((f) =>
-          f.id === activeFieldId ? { ...editField } : f
-        )
+        fields.map((f) => (f.id === activeFieldId ? { ...editField } : f))
       );
       setActiveFieldId(editField.id); // Update activeFieldId to new id
     }
@@ -234,6 +222,30 @@ export default function PdfFormEditor() {
     setShowSignModal(false);
     setPendingImageFieldId(null);
   };
+  // Load PDF
+    async function handleSelectTemplate(e, templates) {
+      const tid = e.target.value;
+    //   setSelectedId(tid);
+      const t = templates.find(t => t.templateId === tid);
+      if (t) {
+        // setTemplateName(t.templateName);
+        // setTemplateId(t.templateId);
+  
+        try {
+          const resp = await downloadTemplatePDF(t.templateId);
+          if (resp.status !== 200 && resp.status !== 201) throw new Error("PDF fetch failed");
+          const buf = resp.data; // axios returns .data (already arraybuffer)
+          const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+          setPdfDoc(pdf);
+        //   setTotalPages(pdf.numPages);
+        } catch (err) {
+          console.log(err)
+          alert("Failed to load PDF for this template.");
+        }
+      }
+    }
+  
+
 
   // Change imageId for image fields in the sidebar (sync all matching ones)
   const handleEditImageId = (newImageId) => {
@@ -255,10 +267,7 @@ export default function PdfFormEditor() {
     let imageData = field.imageData;
     if (field.type === "image" && field.imageId) {
       const src = fields.find(
-        (f) =>
-          f.type === "image" &&
-          f.imageId === field.imageId &&
-          f.imageData
+        (f) => f.type === "image" && f.imageId === field.imageId && f.imageData
       );
       if (src) imageData = src.imageData;
     }
@@ -281,7 +290,8 @@ export default function PdfFormEditor() {
         style={{
           zIndex: field.id === activeFieldId ? 20 : 10,
           background: "rgba(255,255,255,0.5)",
-          border: field.id === activeFieldId ? "2px solid #007bff" : "1px solid #aaa",
+          border:
+            field.id === activeFieldId ? "2px solid #007bff" : "1px solid #aaa",
           borderRadius: 4,
           boxShadow: field.id === activeFieldId ? "0 0 8px #007bff77" : "",
           display: "flex",
@@ -311,10 +321,19 @@ export default function PdfFormEditor() {
           }}
           title="Drag"
         >
-          <span style={{ color: "#007bff", fontWeight: 700, fontSize: 16 }}>⠿</span>
+          <span style={{ color: "#007bff", fontWeight: 700, fontSize: 16 }}>
+            ⠿
+          </span>
         </div>
         {/* Field input */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", height: "100%" }}>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            height: "100%",
+          }}
+        >
           {field.type === "text" || field.type === "number" ? (
             <input
               style={{
@@ -357,7 +376,14 @@ export default function PdfFormEditor() {
                 alt="Sign"
               />
             ) : (
-              <span style={{ color: "#aaa", fontSize: 13, width: "100%", textAlign: "center" }}>
+              <span
+                style={{
+                  color: "#aaa",
+                  fontSize: 13,
+                  width: "100%",
+                  textAlign: "center",
+                }}
+              >
                 No image
               </span>
             )
@@ -411,7 +437,10 @@ export default function PdfFormEditor() {
                 marginBottom: 8,
                 background: field.id === activeFieldId ? "#e6f2ff" : "#f9f9f9",
                 borderRadius: 6,
-                border: field.id === activeFieldId ? "1.5px solid #1890ff" : "1px solid #e3e3e3",
+                border:
+                  field.id === activeFieldId
+                    ? "1.5px solid #1890ff"
+                    : "1px solid #e3e3e3",
                 cursor: "pointer",
                 transition: "all .15s",
                 fontWeight: field.id === activeFieldId ? "600" : "normal",
@@ -425,11 +454,15 @@ export default function PdfFormEditor() {
                 <div style={{ fontSize: 13, color: "#333" }}>{field.label}</div>
                 <div style={{ fontSize: 11, color: "#888" }}>{field.type}</div>
                 <div style={{ fontSize: 12, color: "#444" }}>
-                  {field.type === "image"
-                    ? field.imageData
-                      ? "Image"
-                      : <span style={{ color: "#ccc" }}>no image</span>
-                    : field.value || <span style={{ color: "#ccc" }}>empty</span>}
+                  {field.type === "image" ? (
+                    field.imageData ? (
+                      "Image"
+                    ) : (
+                      <span style={{ color: "#ccc" }}>no image</span>
+                    )
+                  ) : (
+                    field.value || <span style={{ color: "#ccc" }}>empty</span>
+                  )}
                 </div>
               </div>
               <button
@@ -533,11 +566,20 @@ export default function PdfFormEditor() {
                 ))}
               </select>
             </div>
-            <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                marginBottom: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
               <input
                 type="checkbox"
                 checked={!!editField.clientField}
-                onChange={(e) => handleEditField("clientField", e.target.checked)}
+                onChange={(e) =>
+                  handleEditField("clientField", e.target.checked)
+                }
                 id="clientField"
               />
               <label htmlFor="clientField">Client Field</label>
@@ -588,7 +630,12 @@ export default function PdfFormEditor() {
                     <img
                       src={editField.imageData}
                       alt="Signature"
-                      style={{ width: 100, border: "1px solid #ddd", borderRadius: 3, marginTop: 5 }}
+                      style={{
+                        width: 100,
+                        border: "1px solid #ddd",
+                        borderRadius: 3,
+                        marginTop: 5,
+                      }}
                     />
                   )}
                 </div>
@@ -647,7 +694,9 @@ export default function PdfFormEditor() {
                 <input
                   type="number"
                   value={editField.width}
-                  onChange={(e) => handleEditField("width", Number(e.target.value))}
+                  onChange={(e) =>
+                    handleEditField("width", Number(e.target.value))
+                  }
                   style={{
                     width: "100%",
                     padding: 4,
@@ -663,7 +712,9 @@ export default function PdfFormEditor() {
                 <input
                   type="number"
                   value={editField.height}
-                  onChange={(e) => handleEditField("height", Number(e.target.value))}
+                  onChange={(e) =>
+                    handleEditField("height", Number(e.target.value))
+                  }
                   style={{
                     width: "100%",
                     padding: 4,
@@ -705,8 +756,13 @@ export default function PdfFormEditor() {
         }}
       >
         <div style={{ marginBottom: 12, display: "flex", gap: 8 }}>
-          <input type="file" accept="application/pdf" onChange={handleFileChange} />
-          <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>Prev</button>
+      <ChooseTemplateDropdown
+        selectedId={selectedId}
+        onTemplateSelect={handleSelectTemplate}
+      />
+          <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>
+            Prev
+          </button>
           <span>
             Page {currentPage}/{pdfDoc?.numPages || 1}
           </span>
@@ -743,7 +799,10 @@ export default function PdfFormEditor() {
             height: canvasDims.height,
           }}
         >
-          <canvas ref={pdfCanvasRef} style={{ display: "block",overflow:"visible" }} />
+          <canvas
+            ref={pdfCanvasRef}
+            style={{ display: "block", overflow: "visible" }}
+          />
           {/* Field overlays */}
           <div
             style={{
