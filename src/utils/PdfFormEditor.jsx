@@ -5,7 +5,6 @@ import "pdfjs-dist/build/pdf.worker.entry";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import SignaturePadModal from "./SignaturePadModal";
 
-
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 const SIDEBAR_WIDTH = 290;
@@ -29,7 +28,8 @@ function getDefaultField(type, page) {
     value: "",
     page,
     clientField: false,
-    imageData: "", // for image/signature field
+    imageId: type === "image" ? "img_" + Math.random().toString(36).slice(2, 7) : undefined, // assign a random imageId for new image field
+    imageData: "", // only for image type
   };
 }
 
@@ -77,11 +77,14 @@ export default function PdfFormEditor() {
     // eslint-disable-next-line
   }, [pdfDoc, currentPage]);
 
+  // Find field by ID (even if ID has changed)
+  const getFieldById = (id) => fields.find((f) => f.id === id);
+
   // Field select logic
   const handleSelectField = (id) => {
     setActiveFieldId(id);
-    const f = fields.find((f) => f.id === id);
-    setEditField({ ...f });
+    const f = getFieldById(id);
+    setEditField(f ? { ...f } : null);
   };
 
   // Field change (sidebar edits)
@@ -89,9 +92,27 @@ export default function PdfFormEditor() {
     setEditField((f) => ({ ...f, [key]: value }));
   };
 
+  // When the ID is changed, all state references must update to keep things working
+  useEffect(() => {
+    if (!editField) return;
+    // If user edited the field id, update all relevant state
+    if (activeFieldId && editField.id !== activeFieldId) {
+      // Update the ID everywhere in the fields list
+      setFields((fields) =>
+        fields.map((f) =>
+          f.id === activeFieldId ? { ...editField } : f
+        )
+      );
+      setActiveFieldId(editField.id); // Update activeFieldId to new id
+    }
+    // eslint-disable-next-line
+  }, [editField?.id]);
+
   // Save changes from sidebar
   const saveEditField = () => {
-    setFields((fields) => fields.map((f) => (f.id === editField.id ? { ...editField } : f)));
+    setFields((fields) =>
+      fields.map((f) => (f.id === activeFieldId ? { ...editField } : f))
+    );
   };
 
   // Add new field
@@ -113,7 +134,10 @@ export default function PdfFormEditor() {
 
   // Drag/resize overlays update fields
   const updateField = (id, updates) => {
-    setFields((fields) => fields.map((f) => (f.id === id ? { ...f, ...updates } : f)));
+    // For id change, we already handle in effect, so just update normally
+    setFields((fields) =>
+      fields.map((f) => (f.id === id ? { ...f, ...updates } : f))
+    );
     if (activeFieldId === id) setEditField((f) => ({ ...f, ...updates }));
   };
 
@@ -126,24 +150,18 @@ export default function PdfFormEditor() {
 
     for (const field of fields) {
       const page = pdfLibDoc.getPage(field.page - 1);
-      // PDF page size (true PDF units)
       const pdfWidth = page.getWidth();
       const pdfHeight = page.getHeight();
-      // Canvas size (screen, pixels)
       const canvasWidth = canvasDims.width;
       const canvasHeight = canvasDims.height;
-      // Scale factors
       const scaleX = pdfWidth / canvasWidth;
       const scaleY = pdfHeight / canvasHeight;
-      // Scale + adjust Y
       const pdfX = field.x * scaleX;
-      // Y must be scaled, then flipped (canvas 0=top, pdf 0=bottom)
       const pdfY = pdfHeight - (field.y + field.height) * scaleY;
       const pdfWidthField = field.width * scaleX;
       const pdfHeightField = field.height * scaleY;
 
       if (field.type === "image" && field.imageData) {
-        // imageData is a base64 image (PNG/JPEG)
         let imgEmbed;
         if (field.imageData.startsWith("data:image/png")) {
           imgEmbed = await pdfLibDoc.embedPng(field.imageData);
@@ -179,35 +197,72 @@ export default function PdfFormEditor() {
     a.click();
   };
 
-  // Image/upload logic in sidebar
+  // Sidebar image upload: update all fields with same imageId
   const handleSidebarImageUpload = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file || !editField?.imageId) return;
     const reader = new FileReader();
-    reader.onload = (evt) => handleEditField("imageData", evt.target.result);
+    reader.onload = (evt) => {
+      const imgData = evt.target.result;
+      setFields((fields) =>
+        fields.map((f) =>
+          f.type === "image" && f.imageId === editField.imageId
+            ? { ...f, imageData: imgData }
+            : f
+        )
+      );
+      // Also update editField for immediate sidebar preview
+      setEditField((f) => ({ ...f, imageData: imgData }));
+    };
     reader.readAsDataURL(file);
   };
 
-  // Handle saving signature from modal
+  // Save signature: update all fields with same imageId
   const handleSaveSignature = (imgData) => {
-    if (!pendingImageFieldId) return;
-    // Update editField if this is the current editing one
-    if (editField && editField.id === pendingImageFieldId) {
-      setEditField((f) => ({ ...f, imageData: imgData }));
-    }
-    // Also update fields array
+    const field = getFieldById(pendingImageFieldId);
+    if (!field?.imageId) return;
     setFields((fields) =>
       fields.map((f) =>
-        f.id === pendingImageFieldId ? { ...f, imageData: imgData } : f
+        f.type === "image" && f.imageId === field.imageId
+          ? { ...f, imageData: imgData }
+          : f
       )
     );
+    if (editField?.imageId === field.imageId)
+      setEditField((f) => ({ ...f, imageData: imgData }));
+
     setShowSignModal(false);
     setPendingImageFieldId(null);
   };
 
-  // Field overlay (draggable with handle, resizable with mouse)
+  // Change imageId for image fields in the sidebar (sync all matching ones)
+  const handleEditImageId = (newImageId) => {
+    if (!editField) return;
+    // Update this field's imageId, and editField state
+    setEditField((f) => ({ ...f, imageId: newImageId }));
+    // Also update the fields array for this field only (others keep their imageId)
+    setFields((fields) =>
+      fields.map((f) =>
+        f.id === editField.id ? { ...f, imageId: newImageId } : f
+      )
+    );
+  };
+
+  // Field overlay (draggable, resizable, editable)
   const renderField = (field) => {
     if (field.page !== currentPage) return null;
+    // For image, find the imageData from fields with same imageId
+    let imageData = field.imageData;
+    if (field.type === "image" && field.imageId) {
+      const src = fields.find(
+        (f) =>
+          f.type === "image" &&
+          f.imageId === field.imageId &&
+          f.imageData
+      );
+      if (src) imageData = src.imageData;
+    }
+
     return (
       <Rnd
         key={field.id}
@@ -290,9 +345,9 @@ export default function PdfFormEditor() {
               onChange={(e) => updateField(field.id, { value: e.target.value })}
             />
           ) : field.type === "image" ? (
-            field.imageData ? (
+            imageData ? (
               <img
-                src={field.imageData}
+                src={imageData}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -422,6 +477,26 @@ export default function PdfFormEditor() {
                 }}
               />
             </div>
+            {editField.type === "image" && (
+              <div style={{ marginBottom: 8 }}>
+                <label>imageId</label>
+                <input
+                  value={editField.imageId}
+                  onChange={(e) => handleEditImageId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: 4,
+                    fontSize: 13,
+                    borderRadius: 3,
+                    border: "1px solid #ccc",
+                    marginTop: 2,
+                  }}
+                />
+                <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
+                  All fields with the same imageId share the image/signature.
+                </div>
+              </div>
+            )}
             <div style={{ marginBottom: 8 }}>
               <label>Label</label>
               <input
