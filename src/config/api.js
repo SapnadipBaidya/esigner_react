@@ -34,6 +34,29 @@ export const getFieldsByTemplateId = async (templateId) => {
   // ^ matches the backend route!
 };
 
+export const createContract = async ({templateId="",adminId="",contractName=""}) => {
+  const data ={
+    templateId,adminId,contractName
+  }
+  return API.post("http://localhost:3000/contract/create_contract", data, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  // ^ matches the backend route!
+};
+
+export const getContractsByTempId = async ({templateId}) => {
+  return API.post("http://localhost:3000/contract/get_contracts_by_template_id", {
+    templateId
+  }, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  // ^ matches the backend route!
+};
+
 
 // export const submitContract = (payload) =>
 //   API.post('/submit-contract', payload);

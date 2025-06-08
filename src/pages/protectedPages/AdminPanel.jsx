@@ -7,6 +7,7 @@ const SIDEBAR_TABS = [
   { key: "dashboard", label: "Dashboard" },
   { key: "templates", label: "Templates" },
   { key: "edit_template", label: "Edit Template" },
+  { key: "contract", label: "Contract" },
   { key: "users", label: "Users" },
   { key: "audit", label: "Audit Logs" },
   { key: "settings", label: "Settings" }
@@ -28,7 +29,9 @@ function AdminPanel() {
       case "templates":
         return <Template/>;
       case "edit_template":
-        return <Contract/>;
+        return <Contract role="ADMIN"/>;
+      case "contract":
+        return  <Contract role="CONTRACTOR"/> 
       case "users":
         return <h2>User Management</h2>;
       case "audit":
