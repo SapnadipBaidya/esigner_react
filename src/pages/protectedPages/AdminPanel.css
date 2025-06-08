@@ -55,32 +55,57 @@
 }
 
 .admin-sidebar {
-  width: 220px;
-  background: #1e293b;
+  width: 120px;
+  background: linear-gradient(135deg, #1e293b 92%, #334155 100%);
   color: #fff;
-  padding: 32px 0 0 0;
+  padding: 26px 0 0 0;
   min-height: calc(100vh - 56px);
-  box-shadow: 2px 0 8px rgba(0,0,0,0.03);
+  box-shadow: 2px 0 12px 0 rgba(30,41,59,0.08);
+  border-top-right-radius: 18px;
+  border-bottom-right-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .admin-sidebar ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  width: 100%;
 }
 
 .admin-sidebar li {
-  padding: 16px 32px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 14px 0;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   border-left: 4px solid transparent;
-  transition: background 0.18s, border-color 0.18s;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  border-radius: 0 10px 10px 0;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
 }
 
 .admin-sidebar li.active, .admin-sidebar li:hover {
   background: #334155;
   border-left: 4px solid #6366f1;
+  color: #a5b4fc;
+  box-shadow: 1px 0 8px rgba(99,102,241,0.08);
+}
+
+.admin-sidebar .sidebar-divider {
+  width: 60%;
+  height: 1px;
+  background: #47556944;
+  margin: 18px auto 12px auto;
+  border-radius: 2px;
 }
 
 .admin-content {
@@ -89,4 +114,55 @@
   background: #f6f7fb;
   border-radius: 0 0 0 18px;
   min-width: 0;
+}
+
+/* Responsive tweaks */
+@media (max-width: 900px) {
+  .admin-body {
+    flex-direction: column;
+  }
+  .admin-sidebar {
+    flex-direction: row;
+    width: 100vw;
+    min-width: 0;
+    min-height: 56px;
+    border-radius: 0 0 18px 18px;
+    padding: 0 0 0 0;
+    box-shadow: 0 2px 12px 0 rgba(30,41,59,0.08);
+  }
+  .admin-sidebar ul {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: center;
+  }
+  .admin-sidebar li {
+    width: auto;
+    flex: 1;
+    border-radius: 10px 10px 0 0;
+    border-left: none;
+    border-bottom: 4px solid transparent;
+    margin-bottom: 0;
+    padding: 12px 0;
+  }
+  .admin-sidebar li.active, .admin-sidebar li:hover {
+    background: #334155;
+    border-left: none;
+    border-bottom: 4px solid #6366f1;
+    color: #a5b4fc;
+  }
+  .admin-content {
+    padding: 18px 12px;
+    border-radius: 0 0 12px 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-content {
+    padding: 9vw 3vw 6vw 3vw;
+  }
+  .admin-topbar {
+    padding: 0 8vw;
+    font-size: 15px;
+  }
 }

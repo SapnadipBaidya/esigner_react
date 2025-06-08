@@ -69,7 +69,7 @@ function Template() {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f9fafb" }}>
       {/* Sidebar */}
-      <FieldConfigPanel
+      {/* <FieldConfigPanel
         fields={fields}
         activeFieldId={activeFieldId}
         setActiveFieldId={setActiveFieldId}
@@ -77,11 +77,11 @@ function Template() {
         deleteField={deleteField}
         duplicateField={duplicateField}
         currentPage={currentPage}
-      />
+      /> */}
      {/* <button onClick={setFieldsData}>set fields</button> */}
       {/* Main PDF area */}
       <div style={{ flex: 1, padding: 24 }}>
-        <Toolbar
+        {/* <Toolbar
           addField={addField}
           totalPages={totalPages}
           currentPage={currentPage}
@@ -89,7 +89,7 @@ function Template() {
           scale={scale}
           setScale={setScale}
           fields={fields}
-        />
+        /> */}
         <div style={{ position: "relative", minHeight: 600 }}>
           <PdfUploader
             pdfDoc={pdfDoc}
@@ -100,14 +100,14 @@ function Template() {
             scale={scale}
             setScale={setScale}
           />
-          <FieldsOverlay
+          {/* <FieldsOverlay
             pdfDoc={pdfDoc}
             fields={fields}
             setFields={setFields}
             activeFieldId={activeFieldId}
             setActiveFieldId={setActiveFieldId}
             currentPage={currentPage}
-          />
+          /> */}
         </div>
       </div>
     </div>

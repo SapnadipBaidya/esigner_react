@@ -1,37 +1,49 @@
 .fcp-root {
-  min-width: 270px;
+  min-width: 260px;
+  
   background: #f8fafc;
-  padding: 24px 16px 24px 16px;
+  
   border-right: 1px solid #e2e8f0;
   height: 100vh;
   font-family: 'Inter', sans-serif;
   overflow-y: auto;
+  box-shadow: 1px 0 16px 0 rgba(30,41,59,0.04);
+  display: flex;
+  flex-direction: column;
 }
 
 .fcp-group {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .fcp-label {
   font-size: 13px;
   color: #475569;
   display: block;
-  font-weight: 500;
+  font-weight: 600;
+  margin-bottom: 3px;
+  letter-spacing: 0.02em;
 }
 
 .fcp-input {
-  width: 100%;
+  
   margin-top: 2px;
-  padding: 7px 9px;
-  border: 1px solid #d1d5db;
-  border-radius: 5px;
+  padding: 8px 10px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
   outline: none;
   background: #fff;
-  font-size: 14px;
+  font-size: 15px;
+  transition: border-color 0.17s;
+}
+
+.fcp-input:focus {
+  border-color: #2563eb;
+  background: #eff6ff;
 }
 
 .fcp-input-short {
-  width: 85px;
+  width: 90px;
 }
 
 .fcp-hint {
@@ -49,22 +61,30 @@
 .fcp-flex-row {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .fcp-btn-row {
   display: flex;
-  gap: 8px;
+  gap: 9px;
+  margin-top: 8px;
 }
 
 .fcp-btn {
-  padding: 6px 16px;
+  padding: 7px 18px;
   background: #e0e7ef;
   border: none;
   border-radius: 5px;
   font-weight: 500;
   color: #334155;
   cursor: pointer;
-  transition: background 0.18s;
+  transition: background 0.18s, color 0.18s;
+  font-size: 14px;
+  box-shadow: 0 1px 4px 0 rgba(30,41,59,0.06);
+}
+
+.fcp-btn:active {
+  background: #cbd5e1;
 }
 
 .fcp-btn-danger {
@@ -72,44 +92,44 @@
   color: #fff;
 }
 
+.fcp-btn-danger:active {
+  background: #dc2626;
+}
+
 .fcp-btn-secondary {
   background: #f1f5f9;
   color: #334155;
 }
 
-.fcp-btn:active {
-  background: #cbd5e1;
-}
-
-.fcp-btn-danger:active {
-  background: #dc2626;
-}
-
 .fcp-fields-list-section {
-  margin-top: 30px;
+  margin-top: 32px;
   border-top: 1px solid #e5e7eb;
-  padding-top: 12px;
+  padding-top: 14px;
 }
 
 .fcp-fields-list-title {
   font-weight: bold;
-  font-size: 15px;
-  margin-bottom: 5px;
+  font-size: 16px;
+  margin-bottom: 7px;
+  letter-spacing: 0.01em;
+  color: #1e293b;
 }
 
 .fcp-fields-list {
-  margin-top: 12px;
+  margin-top: 10px;
   list-style: none;
   padding: 0;
 }
 
 .fcp-fields-list-item {
   cursor: pointer;
-  color: #3b82f6;
-  border-radius: 4px;
-  padding: 4px 8px;
+  color: #2563eb;
+  border-radius: 5px;
+  padding: 5px 9px;
   margin-bottom: 2px;
-  transition: background 0.18s;
+  transition: background 0.17s, color 0.17s;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .fcp-fields-list-item-active,
@@ -121,10 +141,13 @@
 .fcp-empty-title {
   font-size: 16px;
   color: #64748b;
-  margin-bottom: 6px;
-  font-weight: 600;
+  margin-bottom: 7px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
+
 .fcp-empty-hint {
   font-size: 13px;
   color: #9ca3af;
+  font-weight: 500;
 }
