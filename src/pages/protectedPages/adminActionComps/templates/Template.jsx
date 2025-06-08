@@ -88,6 +88,7 @@ function Template() {
           setCurrentPage={setCurrentPage}
           scale={scale}
           setScale={setScale}
+          fields={fields}
         />
         <div style={{ position: "relative", minHeight: 600 }}>
           <PdfUploader

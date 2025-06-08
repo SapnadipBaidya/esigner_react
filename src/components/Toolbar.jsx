@@ -14,7 +14,18 @@ export default function Toolbar({
   setCurrentPage,
   scale,
   setScale,
+  fields // <-- Add this prop!
 }) {
+  // Local save handler (example: saves to localStorage)
+  function handleSaveFields() {
+    try {
+      localStorage.setItem("pdf_template_fields", JSON.stringify(fields));
+      alert("Fields saved successfully!");
+    } catch (err) {
+      alert("Failed to save fields!");
+    }
+  }
+
   return (
     <div className="tb-root">
       <div className="tb-field-btns">
@@ -27,6 +38,13 @@ export default function Toolbar({
             + {f.label}
           </button>
         ))}
+        <button
+          className="tb-btn tb-save"
+          style={{ background: "#059669", marginLeft: 12 }}
+          onClick={handleSaveFields}
+        >
+          Save Fields
+        </button>
       </div>
       <div className="tb-zoom">
         <button
