@@ -4,6 +4,7 @@ import { useRef } from "react";
 export default function FieldsOverlay({
   pdfDoc, fields, setFields, activeFieldId, setActiveFieldId, currentPage,
 }) {
+  console.log("fields",fields)
   const dragging = useRef(null);
 
   function handleMouseDown(e, id) {
@@ -18,7 +19,7 @@ export default function FieldsOverlay({
     if (!dragging.current) return;
     setFields(fields =>
       fields.map(f =>
-        f.id === dragging.current.id
+        f.id === dragging?.current?.id
           ? { ...f, x: dragging.current.origX + (e.clientX - dragging.current.startX), y: dragging.current.origY + (e.clientY - dragging.current.startY) }
           : f
       )
