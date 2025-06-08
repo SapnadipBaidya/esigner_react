@@ -20,7 +20,7 @@ export const getTemplateData = (templateId) =>
   API.get(`template/get-template-data?templateID=${templateId}`);
 
 export const downloadTemplatePDF = (templateId) =>
-  API.post(`template/get-template-pdf?id=${templateId}`);
+  API.post(`template/get-template-pdf?id=${templateId}`,{},{ responseType: "arraybuffer"});
 // export const submitContract = (payload) =>
 //   API.post('/submit-contract', payload);
 
