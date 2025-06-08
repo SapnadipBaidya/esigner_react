@@ -4,7 +4,7 @@ import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import "pdfjs-dist/build/pdf.worker.entry";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import SignaturePadModal from "./SignaturePadModal";
-import { downloadTemplatePDF } from "../config/api";
+import { createOrUpdateFieldForTemplate, downloadTemplatePDF, getFieldsByTemplateId } from "../config/api";
 import ChooseTemplateDropdown from "../components/pdfDropdown/PdfDropDown";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -61,6 +61,23 @@ export default function PdfFormEditor() {
     const context = canvas.getContext("2d");
     await page.render({ canvasContext: context, viewport }).promise;
   };
+
+
+const getFieldsByTemplateIdOnSelection = async (templateId) => {
+  return await getFieldsByTemplateId(templateId);
+}
+
+useEffect(() => {
+  const fetchFields = async () => {
+    if (selectedId) {
+      const resp = await getFieldsByTemplateIdOnSelection(selectedId);
+      setFields(resp?.data?.fields)
+      console.log("resp fields", resp?.data?.fields);
+    }
+  };
+  
+  fetchFields();
+}, [selectedId]);
 
   useEffect(() => {
     if (pdfDoc) renderPage(pdfDoc, currentPage);
@@ -205,6 +222,11 @@ export default function PdfFormEditor() {
     reader.readAsDataURL(file);
   };
 
+  const handleSaveFields=async()=>{
+    console.log("fields",fields,selectedId)
+  await   createOrUpdateFieldForTemplate(selectedId,fields)
+  }
+
   // Save signature: update all fields with same imageId
   const handleSaveSignature = (imgData) => {
     const field = getFieldById(pendingImageFieldId);
@@ -225,7 +247,7 @@ export default function PdfFormEditor() {
   // Load PDF
     async function handleSelectTemplate(e, templates) {
       const tid = e.target.value;
-    //   setSelectedId(tid);
+      setSelectedId(tid);
       const t = templates.find(t => t.templateId === tid);
       if (t) {
         // setTemplateName(t.templateName);
@@ -274,6 +296,9 @@ export default function PdfFormEditor() {
 
     return (
       <Rnd
+        // disableDragging={true}
+        // enableResizing={false}
+
         key={field.id}
         size={{ width: field.width, height: field.height }}
         position={{ x: field.x, y: field.y }}
@@ -300,8 +325,8 @@ export default function PdfFormEditor() {
           pointerEvents: "auto",
         }}
         dragHandleClassName={`field-drag-handle-${field.id}`}
-        enableResizing={true}
         onClick={() => handleSelectField(field.id)}
+        
       >
         {/* Drag handle */}
         <div
@@ -785,6 +810,9 @@ export default function PdfFormEditor() {
             }}
           >
             Download
+          </button>
+          <button onClick={handleSaveFields}>
+            Save Fields
           </button>
         </div>
         {/* PDF Canvas + Overlay */}
